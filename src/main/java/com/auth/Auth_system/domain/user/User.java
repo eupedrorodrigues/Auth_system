@@ -39,13 +39,13 @@ public class User implements UserDetails {
     }
 
     @Override
-    public String getPassword() {
-        return "";
+    public String getUsername() {
+        return login;
     }
 
     @Override
-    public String getUsername() {
-        return login;
+    public String getPassword() {
+        return password;
     }
 
     @Override
@@ -68,7 +68,4 @@ public class User implements UserDetails {
         return true;
     }
 
-    public String getLogin() {
-        return null;
-    }
 }
