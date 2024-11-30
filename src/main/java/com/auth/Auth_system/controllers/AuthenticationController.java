@@ -5,6 +5,7 @@ import com.auth.Auth_system.domain.user.AuthenticationDTO;
 import com.auth.Auth_system.domain.user.LoginResponseDTO;
 import com.auth.Auth_system.domain.user.RegisterDTO;
 import com.auth.Auth_system.domain.user.User;
+import com.auth.Auth_system.exceptions.UserAlreadyExistsException;
 import com.auth.Auth_system.infra.security.TokenService;
 import com.auth.Auth_system.repositories.UserRepository;
 import jakarta.validation.Valid;
@@ -40,10 +41,12 @@ public class AuthenticationController {
 
     @PostMapping("/register")
     public ResponseEntity register(@RequestBody @Valid RegisterDTO data){
-        if(this.repository.findByLogin(data.login()) != null) return ResponseEntity.badRequest().build();
+        if (this.repository.findByLogin(data.login()) != null) {
+            throw new UserAlreadyExistsException("Login already exists.");
+        }
 
         String encryptedPassword = new BCryptPasswordEncoder().encode(data.password());
-        User newUser = new User(data.login(), encryptedPassword, data.role());
+        User newUser = new User(data.name(), data.login(), encryptedPassword, data.role());
 
         this.repository.save(newUser);
 
