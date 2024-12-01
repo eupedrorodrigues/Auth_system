@@ -14,10 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("auth")
@@ -42,7 +41,7 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity register(@RequestBody @Valid RegisterDTO data){
         if (this.repository.findByLogin(data.login()) != null) {
-            throw new UserAlreadyExistsException("Login already exists.");
+            throw new UserAlreadyExistsException("The email has already been registered.");
         }
 
         String encryptedPassword = new BCryptPasswordEncoder().encode(data.password());
@@ -51,5 +50,11 @@ public class AuthenticationController {
         this.repository.save(newUser);
 
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<User>> getAllUsers() {
+        List<User> users = repository.findAll();
+        return ResponseEntity.ok(users);
     }
 }
