@@ -1,7 +1,7 @@
 package com.auth.Auth_system.controllers;
 
 import com.auth.Auth_system.domain.user.*;
-import com.auth.Auth_system.exceptions.UserAlreadyExistsException;
+import com.auth.Auth_system.exceptions.*;
 import com.auth.Auth_system.repositories.UserRepository;
 import com.auth.Auth_system.infra.security.TokenService;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,6 @@ import java.util.List;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-
 @ExtendWith(MockitoExtension.class)
 public class AuthenticationControllerTest {
 
@@ -35,10 +34,8 @@ public class AuthenticationControllerTest {
     @InjectMocks
     private AuthenticationController authenticationController;
 
-
     @Test
     void testLogin() {
-
         String login = "test@example.com";
         String password = "password123";
         AuthenticationDTO authDTO = new AuthenticationDTO(login, password);
@@ -48,7 +45,6 @@ public class AuthenticationControllerTest {
         when(mockAuthentication.getPrincipal()).thenReturn(mockUser);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(mockAuthentication);
-
         when(tokenService.generateToken(mockUser)).thenReturn("generated-token");
 
         ResponseEntity<LoginResponseDTO> response = authenticationController.login(authDTO);
@@ -57,25 +53,18 @@ public class AuthenticationControllerTest {
         assertNotNull(response.getBody().token());
     }
 
-
     @Test
     void testRegisterUserAlreadyExists() {
-
         String login = "existing@example.com";
         RegisterDTO registerDTO = new RegisterDTO("Test User", login, "password123", UserRole.USER);
 
-        User mockUser = new User("Test User", login, "password123", UserRole.USER);
-        when(repository.findByLogin(login)).thenReturn(mockUser);
+        when(repository.findByLogin(login)).thenReturn(new User("Test User", login, "password123", UserRole.USER));
 
-        assertThrows(UserAlreadyExistsException.class, () -> {
-            authenticationController.register(registerDTO);
-        });
+        assertThrows(UserAlreadyExistsException.class, () -> authenticationController.register(registerDTO));
     }
-
 
     @Test
     void testRegisterNewUser() {
-
         String login = "newuser@example.com";
         RegisterDTO registerDTO = new RegisterDTO("New User", login, "password123", UserRole.USER);
 
@@ -89,7 +78,6 @@ public class AuthenticationControllerTest {
 
     @Test
     void testGetAllUsers() {
-
         List<User> users = List.of(new User("Test User", "test@example.com", "password", UserRole.USER));
         when(repository.findAll()).thenReturn(users);
 
@@ -101,50 +89,39 @@ public class AuthenticationControllerTest {
     }
 
     @Test
-    void testNameNotEmpty() {
+    void testNameValidation() {
         String login = "test@example.com";
         String validPassword = "password123";
-        String nullName = null;
-        String emptyName = "";
-        String validName = "Test User";
+        RegisterDTO nullNameDTO = new RegisterDTO(null, login, validPassword, UserRole.USER);
+        RegisterDTO emptyNameDTO = new RegisterDTO("", login, validPassword, UserRole.USER);
+        RegisterDTO shortNameDTO = new RegisterDTO("Jo", login, validPassword, UserRole.USER);
+        RegisterDTO validNameDTO = new RegisterDTO("Valid Name", login, validPassword, UserRole.USER);
 
-        RegisterDTO nullNameDTO = new RegisterDTO(nullName, login, validPassword, UserRole.USER);
-        RegisterDTO emptyNameDTO = new RegisterDTO(emptyName, login, validPassword, UserRole.USER);
-        RegisterDTO validNameDTO = new RegisterDTO(validName, login, validPassword, UserRole.USER);
-
-        assertThrows(IllegalArgumentException.class, () -> authenticationController.register(nullNameDTO));
-
-        assertThrows(IllegalArgumentException.class, () -> authenticationController.register(emptyNameDTO));
-
+        assertThrows(NameValidationException.class, () -> authenticationController.register(nullNameDTO));
+        assertThrows(NameValidationException.class, () -> authenticationController.register(emptyNameDTO));
+        assertThrows(NameValidationException.class, () -> authenticationController.register(shortNameDTO));
         assertDoesNotThrow(() -> authenticationController.register(validNameDTO));
     }
 
     @Test
-    void testNameLength() {
-        String login = "test@example.com";
+    void testEmailValidation() {
         String password = "password123";
-        String shortName = "Jo";
+        RegisterDTO invalidEmailDTO = new RegisterDTO("Test User", "invalid-email", password, UserRole.USER);
+        RegisterDTO validEmailDTO = new RegisterDTO("Test User", "valid@example.com", password, UserRole.USER);
 
-        RegisterDTO shortNameDTO = new RegisterDTO(shortName, login, password, UserRole.USER);
-
-        assertThrows(IllegalArgumentException.class, () -> authenticationController.register(shortNameDTO));
+        assertThrows(EmailValidationException.class, () -> authenticationController.register(invalidEmailDTO));
+        assertDoesNotThrow(() -> authenticationController.register(validEmailDTO));
     }
-
 
     @Test
-    void testPasswordLength() {
+    void testPasswordValidation() {
         String login = "test@example.com";
-        String shortPassword = "pass";
-        String validPassword = "password123";
+        RegisterDTO shortPasswordDTO = new RegisterDTO("Test User", login, "short", UserRole.USER);
+        RegisterDTO validPasswordDTO = new RegisterDTO("Test User", login, "password123", UserRole.USER);
 
-        RegisterDTO shortPasswordDTO = new RegisterDTO("Test User", login, shortPassword, UserRole.USER);
-        RegisterDTO validPasswordDTO = new RegisterDTO("Test User", login, validPassword, UserRole.USER);
-
-        assertThrows(IllegalArgumentException.class, () -> authenticationController.register(shortPasswordDTO));
-
+        assertThrows(PasswordValidationException.class, () -> authenticationController.register(shortPasswordDTO));
         assertDoesNotThrow(() -> authenticationController.register(validPasswordDTO));
     }
-
 
     @Test
     void testLoginWithInvalidCredentials() {
@@ -157,50 +134,6 @@ public class AuthenticationControllerTest {
 
         assertThrows(RuntimeException.class, () -> authenticationController.login(authDTO));
     }
-
-    @Test
-    void testValidRegister() {
-        String login = "validuser@example.com";
-        String validPassword = "password123";
-        String validName = "Valid User";
-
-        RegisterDTO validRegisterDTO = new RegisterDTO(validName, login, validPassword, UserRole.USER);
-
-        when(repository.findByLogin(login)).thenReturn(null);
-
-        ResponseEntity<Void> response = authenticationController.register(validRegisterDTO);
-
-        verify(repository, times(1)).save(any(User.class));
-        assertEquals(200, response.getStatusCodeValue());
-    }
-
-    @Test
-    void testLoginWithNonExistentEmail() {
-        String nonExistentLogin = "nonexistent@example.com";
-        String password = "password123";
-        AuthenticationDTO authDTO = new AuthenticationDTO(nonExistentLogin, password);
-
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenThrow(new RuntimeException("User not found"));
-
-        assertThrows(RuntimeException.class, () -> authenticationController.login(authDTO));
-    }
-
-
-
-    @Test
-    void testEmailFormat() {
-        String invalidEmail = "invalid-email";
-        String validEmail = "valid@example.com";
-        String password = "password123";
-
-        RegisterDTO invalidEmailDTO = new RegisterDTO("Test User", invalidEmail, password, UserRole.USER);
-        RegisterDTO validEmailDTO = new RegisterDTO("Test User", validEmail, password, UserRole.USER);
-
-        assertThrows(IllegalArgumentException.class, () -> authenticationController.register(invalidEmailDTO));
-        assertDoesNotThrow(() -> authenticationController.register(validEmailDTO));
-    }
-
 
     @Test
     void testPasswordEncryption() {
@@ -216,6 +149,4 @@ public class AuthenticationControllerTest {
         verify(repository, times(1)).save(any(User.class));
         assertEquals(200, response.getStatusCodeValue());
     }
-
-
 }

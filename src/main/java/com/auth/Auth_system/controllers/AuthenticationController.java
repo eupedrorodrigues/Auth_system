@@ -5,6 +5,9 @@ import com.auth.Auth_system.domain.user.AuthenticationDTO;
 import com.auth.Auth_system.domain.user.LoginResponseDTO;
 import com.auth.Auth_system.domain.user.RegisterDTO;
 import com.auth.Auth_system.domain.user.User;
+import com.auth.Auth_system.exceptions.EmailValidationException;
+import com.auth.Auth_system.exceptions.NameValidationException;
+import com.auth.Auth_system.exceptions.PasswordValidationException;
 import com.auth.Auth_system.exceptions.UserAlreadyExistsException;
 import com.auth.Auth_system.infra.security.TokenService;
 import com.auth.Auth_system.repositories.UserRepository;
@@ -42,35 +45,44 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity register(@RequestBody @Valid RegisterDTO data) {
 
-        if (data.name() == null || data.name().trim().isEmpty()) {
-            throw new IllegalArgumentException("Name cannot be empty or null.");
-        }
+        validateName(data.name());
+        validateEmail(data.login());
+        validatePassword(data.password());
 
-        if(data.name().length() < 3){
-            throw new IllegalArgumentException("Name must be at least 3 characters long.");
-        }
-
-        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
-        if (!Pattern.matches(emailRegex, data.login())) {
-            throw new IllegalArgumentException("Invalid email format.");
-        }
-
-
-        if (this.repository.findByLogin(data.login()) != null) {
+        if (repository.findByLogin(data.login()) != null) {
             throw new UserAlreadyExistsException("The email has already been registered.");
-        }
-
-        if (data.password().length() < 8) {
-            throw new IllegalArgumentException("Password must be at least 8 characters long.");
         }
 
         String encryptedPassword = new BCryptPasswordEncoder().encode(data.password());
         User newUser = new User(data.name(), data.login(), encryptedPassword, data.role());
 
-        this.repository.save(newUser);
+        repository.save(newUser);
 
         return ResponseEntity.ok().build();
     }
+
+    private void validateName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new NameValidationException("Name cannot be empty or null.");
+        }
+        if (name.length() < 3) {
+            throw new NameValidationException("Name must be at least 3 characters long.");
+        }
+    }
+
+    private void validateEmail(String email) {
+        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
+        if (!Pattern.matches(emailRegex, email)) {
+            throw new EmailValidationException("Invalid email format.");
+        }
+    }
+
+    private void validatePassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new PasswordValidationException("Password must be at least 8 characters long.");
+        }
+    }
+
 
     @GetMapping("/users")
     public ResponseEntity<List<User>> getAllUsers() {
