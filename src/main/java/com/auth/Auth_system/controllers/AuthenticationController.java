@@ -17,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("auth")
@@ -48,6 +49,12 @@ public class AuthenticationController {
         if(data.name().length() < 3){
             throw new IllegalArgumentException("Name must be at least 3 characters long.");
         }
+
+        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
+        if (!Pattern.matches(emailRegex, data.login())) {
+            throw new IllegalArgumentException("Invalid email format.");
+        }
+
 
         if (this.repository.findByLogin(data.login()) != null) {
             throw new UserAlreadyExistsException("The email has already been registered.");
