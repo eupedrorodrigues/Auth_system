@@ -39,9 +39,22 @@ public class AuthenticationController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity register(@RequestBody @Valid RegisterDTO data){
+    public ResponseEntity register(@RequestBody @Valid RegisterDTO data) {
+
+        if (data.name() == null || data.name().trim().isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be empty or null.");
+        }
+
+        if(data.name().length() < 3){
+            throw new IllegalArgumentException("Name must be at least 3 characters long.");
+        }
+
         if (this.repository.findByLogin(data.login()) != null) {
             throw new UserAlreadyExistsException("The email has already been registered.");
+        }
+
+        if (data.password().length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters long.");
         }
 
         String encryptedPassword = new BCryptPasswordEncoder().encode(data.password());
