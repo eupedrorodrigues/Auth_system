@@ -14,7 +14,6 @@ This project is an API built using **Java, Java Spring, PostgreSQL, JWT, Mockito
 - [Usage](#usage)
 - [API Endpoints](#api-endpoints)
 - [Database](#database)
-- [Contributing](#contributing)
 
 ## Installation
 
